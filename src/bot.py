@@ -269,8 +269,8 @@ class Bot:
                 Logger.error("Failed to detect if /nopickup command was applied or not")
 
         # Adjust players setting for single player games
-        if Config().sp_players["player_count"] != "":
-            player_count = Config().sp_players["player_count"]
+        if Config().single_player["player_count"] != "":
+            player_count = Config().single_player["player_count"]
             if view.set_players_count():
                 Logger.info(f"Activated player count {player_count}")
             else:
