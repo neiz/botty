@@ -33,8 +33,8 @@ def enable_no_pickup() -> bool:
 
 def set_players_count() -> bool:
     """
-    Checks the best match between enabled and disabled an retrys if already set.
-    :return: Returns True if we succesfully set the nopickup option
+    Sets the player count in a game based on configuration. (only works in sp)
+    :return: Returns True if we succesfully ran the players command
     """
     keyboard.send('enter')
     wait(0.1, 0.25)
