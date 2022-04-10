@@ -54,6 +54,7 @@ class Config:
     necro = {}
     basic = {}
     basic_ranged = {}
+    single_player = {}
 
     _instance = None
 
@@ -207,6 +208,11 @@ class Config:
         self.dclone = {
             "region_ips": self._select_val("dclone", "region_ips"),
             "dclone_hotip": self._select_val("dclone", "dclone_hotip"),
+        }
+
+        # Added for single player config
+        self.single_player = {
+            "player_count": self._select_val("single_player", "player_count")
         }
 
         self.routes = {}

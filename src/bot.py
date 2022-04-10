@@ -251,6 +251,14 @@ class Bot:
                 Logger.info("Activated /nopickup")
             else:
                 Logger.error("Failed to detect if /nopickup command was applied or not")
+
+        # Adjust players setting for single player games
+        if Config().single_player["player_count"] != "":
+            player_count = Config().single_player["player_count"]
+            if view.set_players_count():
+                Logger.info(f"Activated player count {player_count}")
+            else:
+                Logger.error("Failed to set players count")
         self.trigger_or_stop("maintenance")
 
     def on_maintenance(self):

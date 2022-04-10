@@ -31,6 +31,18 @@ def enable_no_pickup() -> bool:
     wait(0.1, 0.25)
     return True
 
+def set_players_count() -> bool:
+    """
+    Checks the best match between enabled and disabled an retrys if already set.
+    :return: Returns True if we succesfully set the nopickup option
+    """
+    keyboard.send('enter')
+    wait(0.1, 0.25)
+    player_count = Config().single_player[f"player_count"]
+    keyboard.write(f'/players {player_count}',delay=.20)
+    keyboard.send('enter')
+    return True
+
 def save_and_exit() -> bool:
     """
     Performes save and exit action from within game
