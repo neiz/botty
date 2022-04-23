@@ -10,24 +10,9 @@ from utils.misc import wait, trim_black, color_filter, cut_roi
 from inventory import consumables
 from ui import view
 from screen import convert_screen_to_monitor, grab
-from dataclasses import dataclass
 from logger import Logger
 from ocr import Ocr
 from template_finder import TemplateMatch
-
-@dataclass
-class BoxInfo:
-    img: np.ndarray = None
-    pos: tuple = None
-    column: int = None
-    row: int = None
-    need_id: bool = False
-    sell: bool = False
-    keep: bool = False
-    def __getitem__(self, key):
-        return super().__getattribute__(key)
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
 
 def get_slot_pos_and_img(img: np.ndarray, column: int, row: int) -> tuple[tuple[int, int],  np.ndarray]:
     """
@@ -183,10 +168,11 @@ def tab_properties(idx: int = 0) -> dict[int, int, tuple]:
     }
 
 def indicator_location_to_tab_count(pos: tuple) -> int:
-    for i in range(3):
+    for i in range(4):
         tab = tab_properties(i)
         if tab["left"] <= pos[0] < tab["right"]:
             return i
+    return -1
 
 def get_active_tab(indicator: TemplateMatch = None) -> int:
     indicator = detect_screen_object(ScreenObjects.TabIndicator) if indicator is None else indicator
@@ -194,7 +180,7 @@ def get_active_tab(indicator: TemplateMatch = None) -> int:
         return indicator_location_to_tab_count(indicator.center)
     else:
         Logger.error("common/get_active_tab(): Error finding tab indicator")
-    return False
+    return -1
 
 def select_tab(idx: int):
     # stash or vendor must be open

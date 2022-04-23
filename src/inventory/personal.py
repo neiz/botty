@@ -8,6 +8,7 @@ import keyboard
 import cv2
 import time
 import numpy as np
+from dataclasses import dataclass
 
 from template_finder import TemplateFinder
 from config import Config
@@ -23,6 +24,20 @@ inv_gold_full = False
 messenger = Messenger()
 item_finder = ItemFinder()
 nontradable_items = ["key of ", "essense of", "wirt's", "jade figurine"]
+
+@dataclass
+class BoxInfo:
+    img: np.ndarray = None
+    pos: tuple = None
+    column: int = None
+    row: int = None
+    need_id: bool = False
+    sell: bool = False
+    keep: bool = False
+    def __getitem__(self, key):
+        return super().__getattribute__(key)
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
 
 def get_inventory_gold_full():
     global inv_gold_full
@@ -241,20 +256,6 @@ def keep_item(item_box: ItemText = None, found_item: Item = None, do_logging: bo
         return True
     return False
 
-def specific_inventory_roi(desired: str = "reserved"):
-    #roi spec: left, top, W, H
-    roi = Config().ui_roi["right_inventory"].copy()
-    open_width = Config().ui_pos["slot_width"] * Config().char["num_loot_columns"]
-    if desired == "reserved":
-        roi[0]=roi[0] + open_width
-        roi[2]=roi[2] - open_width
-    elif desired == "open":
-        roi[2]=open_width
-    else:
-        Logger.error(f"set_inventory_rois: unsupported desired={desired}")
-        return None
-    return roi
-
 def open(img: np.ndarray = None) -> np.ndarray:
     img = grab() if img is None else img
     if not is_visible(ScreenObjects.RightPanel, img):
@@ -269,7 +270,7 @@ def open(img: np.ndarray = None) -> np.ndarray:
         img = grab()
     return img
 
-def inspect_items(inp_img: np.ndarray = None, close_window: bool = True, game_stats: GameStats = None):
+def inspect_items(inp_img: np.ndarray = None, close_window: bool = True, game_stats: GameStats = None) -> list[BoxInfo]:
     """
     Iterate over all picked items in inventory--ID items and decide which to stash
     :param img: Image in which the item is searched (item details should be visible)
@@ -302,8 +303,8 @@ def inspect_items(inp_img: np.ndarray = None, close_window: bool = True, game_st
             # determine the item's ROI in inventory
             cnt=0
             while True:
-                pre = mask_by_roi(img, specific_inventory_roi("open"))
-                post = mask_by_roi(hovered_item, specific_inventory_roi("open"))
+                pre = mask_by_roi(img, Config().ui_roi["open_inventory_area"])
+                post = mask_by_roi(hovered_item, Config().ui_roi["open_inventory_area"])
                 # will sometimes have equivalent diff if mouse ends up in an inconvenient place.
                 if not np.array_equal(pre, post):
                     break
@@ -343,7 +344,7 @@ def inspect_items(inp_img: np.ndarray = None, close_window: bool = True, game_st
                     if (is_unidentified := is_visible(ScreenObjects.Unidentified, item_box.data)):
                         need_id = True
                         center_mouse()
-                        tome_state, tome_pos = common.tome_state(grab(), tome_type = "id", roi = specific_inventory_roi("reserved"))
+                        tome_state, tome_pos = common.tome_state(grab(), tome_type = "id", roi = Config().ui_roi["restricted_inventory_area"])
                     if is_unidentified and tome_state is not None and tome_state == "ok":
                         common.id_item_with_tome([x_m, y_m], tome_pos)
                         need_id = False
@@ -377,7 +378,7 @@ def inspect_items(inp_img: np.ndarray = None, close_window: bool = True, game_st
                 if keep:
                     sell = need_id = False
 
-                box = common.BoxInfo(
+                box = BoxInfo(
                     img = item_box.data,
                     pos = (x_m, y_m),
                     column = slot[2],
@@ -444,13 +445,23 @@ def transfer_items(items: list, action: str = "drop", img: np.ndarray = None) ->
             keyboard.send('ctrl', do_release=False)
             wait(0.1, 0.2)
         for item in filtered:
+            pre_hover_img = grab()
+            _, slot_img = common.get_slot_pos_and_img(pre_hover_img, item.column, item.row)
+            if not common.slot_has_item(slot_img):
+                # item no longer exists in that position...
+                Logger.debug(f"Item at {item.pos} doesn't exist, skip and remove from list")
+                for cnt, o_item in enumerate(items):
+                    if o_item.pos == item.pos:
+                        items.pop(cnt)
+                        break
+                continue
             # move to item position and left click
             mouse.move(*item.pos, randomize=4, delay_factor=[0.2, 0.4])
             wait(0.2, 0.4)
             pre_transfer_img = grab()
             mouse.press(button="left")
             # wait for inventory image to update indicating successful transfer / item select
-            success = wait_for_update(pre_transfer_img, specific_inventory_roi("open"), 3)
+            success = wait_for_update(pre_transfer_img, Config().ui_roi["open_inventory_area"], 3)
             mouse.release(button="left")
             if not success:
                 Logger.warning(f"transfer_items: inventory unchanged after attempting to {action} item at position {item.pos}")
@@ -473,5 +484,5 @@ def transfer_items(items: list, action: str = "drop", img: np.ndarray = None) ->
                     if (gold_unchanged := not wait_for_update(pre_transfer_img, Config().ui_roi["inventory_gold_digits"], 3)):
                         Logger.info("Inventory gold is full, force stash")
                     set_inventory_gold_full(gold_unchanged)
-        keyboard.send('ctrl', do_press=False)
+    keyboard.send('ctrl', do_press=False)
     return items
